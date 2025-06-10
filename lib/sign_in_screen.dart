@@ -35,7 +35,7 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       final request = {
         'requestType': 'Authorization',
-        'action': 'signin',
+        'action': 'login',
         'data': {
           'username': _usernameController.text,
           'password': _passwordController.text,

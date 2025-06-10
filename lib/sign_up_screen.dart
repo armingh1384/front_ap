@@ -120,6 +120,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     final email = _emailController.text.trim();
                     final password = _passwordController.text;
                     final confirmPassword = _confirmController.text;
+                    if (!isValidEmail(email)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Please enter a valid email address')),
+                      );
+                      return;
+                    }
+
 
                     if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +144,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   },
                   child: Text(
                     'Sign Up',
+
                     style: TextStyle(fontSize: 18),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -246,6 +254,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
     );
   }
+}
+bool isValidEmail(String email) {
+  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  return emailRegex.hasMatch(email);
 }
 
 class FadePageRoute<T> extends PageRouteBuilder<T> {
