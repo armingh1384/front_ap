@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_ap/sign_in_screen.dart';
 import 'package:flutter_ap/services/socket_service.dart';
 
-
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -12,6 +11,10 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   late SocketService socketService;
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
 
   @override
   void initState() {
@@ -23,6 +26,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void dispose() {
     socketService.disconnect();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
@@ -68,10 +74,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               SizedBox(height: 40),
-              _buildInputField(hint: 'Email'),
+              _buildInputField(
+                hint: 'Email',
+                controller: _emailController,
+              ),
               SizedBox(height: 20),
               _buildPasswordField(
                 hint: 'Password',
+                controller: _passwordController,
                 obscure: _obscurePassword,
                 toggle: () {
                   setState(() {
@@ -82,6 +92,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               SizedBox(height: 20),
               _buildPasswordField(
                 hint: 'Confirm Password',
+                controller: _confirmController,
                 obscure: _obscureConfirmPassword,
                 toggle: () {
                   setState(() {
@@ -94,7 +105,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    final email = _emailController.text.trim();
+                    final password = _passwordController.text;
+                    final confirmPassword = _confirmController.text;
+
+                    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Please fill all fields')),
+                      );
+                      return;
+                    }
+                    if (password != confirmPassword) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Passwords do not match')),
+                      );
+                      return;
+                    }
+                    _signUp(email, password);
+                  },
                   child: Text(
                     'Sign Up',
                     style: TextStyle(fontSize: 18),
@@ -139,8 +168,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildInputField({required String hint}) {
+  Widget _buildInputField({
+    required String hint,
+    required TextEditingController controller,
+  }) {
     return TextField(
+      controller: controller,
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
@@ -166,10 +199,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Widget _buildPasswordField({
     required String hint,
+    required TextEditingController controller,
     required bool obscure,
     required VoidCallback toggle,
   }) {
     return TextField(
+      controller: controller,
       obscureText: obscure,
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(

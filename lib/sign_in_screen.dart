@@ -12,6 +12,9 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   late SocketService socketService;
+  bool _obscurePassword = true;
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -22,23 +25,42 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
     socketService.disconnect();
     super.dispose();
   }
 
-  void _signIn(String Username, String password) {
-    final request = {
-      'requestType': 'Authorization',
-      'action': 'signin',
-      'data': {
-        'username': Username,
-        'password': password,
+  void _signIn() {
+    try {
+      final request = {
+        'requestType': 'Authorization',
+        'action': 'signin',
+        'data': {
+          'username': _usernameController.text,
+          'password': _passwordController.text,
+        },
+      };
 
-      },
-    };
+      print('Sending login request: ${jsonEncode(request)}');
+      socketService.sendMessage(request);
 
-    socketService.sendMessage(request);  }
-  bool _obscurePassword = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login request sent successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error sending login request: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send login request'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +108,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _signIn,
                   child: Text(
                     'Sign In',
                     style: TextStyle(fontSize: 18),
@@ -122,7 +144,6 @@ class _SignInScreenState extends State<SignInScreen> {
                           },
                         ),
                       );
-
                     },
                     child: Text(
                       'Sign Up',
@@ -143,6 +164,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Widget _buildInputField({required String hint}) {
     return TextField(
+      controller: _usernameController,
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
@@ -168,6 +190,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Widget _buildPasswordField() {
     return TextField(
+      controller: _passwordController,
       obscureText: _obscurePassword,
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
