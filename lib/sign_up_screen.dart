@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_ap/sign_in_screen.dart';
+import 'package:flutter_ap/services/socket_service.dart';
+
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -9,6 +11,30 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  late SocketService socketService;
+
+  @override
+  void initState() {
+    super.initState();
+    socketService = SocketService(host: '192.168.1.6', port: 1384);
+    socketService.connect();
+  }
+
+  @override
+  void dispose() {
+    socketService.disconnect();
+    super.dispose();
+  }
+
+  void _signUp(String email, String password) {
+    final message = {
+      'action': 'signup',
+      'email': email,
+      'password': password,
+    };
+    socketService.sendMessage(message);
+  }
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
