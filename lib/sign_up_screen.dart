@@ -12,6 +12,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   late SocketService socketService;
 
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
@@ -19,24 +20,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
-    socketService = SocketService(host: '192.168.1.6', port: 1384);
+    socketService = SocketService(host: '192.168.1.6', port: 10384);
     socketService.connect();
   }
 
   @override
   void dispose() {
     socketService.disconnect();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
   }
 
-  void _signUp(String email, String password) {
+  void _signUp(String username, String email, String password) {
     final message = {
+      'requestType': 'Authorization',
       'action': 'signup',
+      'data':{
+      'username': username,
       'email': email,
-      'password': password,
+      'password': password},
     };
     socketService.sendMessage(message);
   }
@@ -75,6 +80,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               SizedBox(height: 40),
               _buildInputField(
+                hint: 'Username',
+                controller: _usernameController,
+              ),
+              SizedBox(height: 20),
+              _buildInputField(
                 hint: 'Email',
                 controller: _emailController,
               ),
@@ -106,11 +116,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 height: 55,
                 child: ElevatedButton(
                   onPressed: () {
+                    final username = _usernameController.text.trim();
                     final email = _emailController.text.trim();
                     final password = _passwordController.text;
                     final confirmPassword = _confirmController.text;
 
-                    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+                    if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Please fill all fields')),
                       );
@@ -122,7 +133,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       );
                       return;
                     }
-                    _signUp(email, password);
+                    _signUp(username, email, password);
                   },
                   child: Text(
                     'Sign Up',

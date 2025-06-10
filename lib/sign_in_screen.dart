@@ -19,7 +19,7 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   void initState() {
     super.initState();
-    socketService = SocketService(host: '192.168.1.6', port: 1384);
+    socketService = SocketService(host: '192.168.1.6', port: 10384);
     socketService.connect();
   }
 
