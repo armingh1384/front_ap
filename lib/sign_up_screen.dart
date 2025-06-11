@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_ap/sign_in_screen.dart';
 import 'package:flutter_ap/services/socket_service.dart';
+import 'dart:convert';
+
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -21,8 +23,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void initState() {
     super.initState();
     socketService = SocketService(host: '192.168.1.6', port: 10384);
-    socketService.connect();
+    socketService.connect().then((_) {
+      socketService.setOnMessage((message) {
+        final response = jsonDecode(message);
+
+        if (response['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('✅ Sign up successful!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('❌ ${response['message'] ?? 'Sign up failed'}')),
+          );
+        }
+      });
+    });
   }
+
 
   @override
   void dispose() {
@@ -38,10 +55,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final message = {
       'requestType': 'Authorization',
       'action': 'signup',
-      'data':{
-      'username': username,
-      'email': email,
-      'password': password},
+      'data': {
+        'username': username,
+        'email': email,
+        'password': password,
+      },
     };
     socketService.sendMessage(message);
   }
@@ -120,23 +138,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     final email = _emailController.text.trim();
                     final password = _passwordController.text;
                     final confirmPassword = _confirmController.text;
+
                     if (!isValidEmail(email)) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Please enter a valid email address')),
+                        SnackBar(content: Text('❌ Please enter a valid email address')),
                       );
                       return;
                     }
-
 
                     if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Please fill all fields')),
+                        SnackBar(content: Text('⚠️ Please fill all fields')),
                       );
                       return;
                     }
+
                     if (password != confirmPassword) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Passwords do not match')),
+                        SnackBar(content: Text('🔒 Passwords do not match')),
                       );
                       return;
                     }
@@ -144,7 +163,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   },
                   child: Text(
                     'Sign Up',
-
                     style: TextStyle(fontSize: 18),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -255,6 +273,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
+
 bool isValidEmail(String email) {
   final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
   return emailRegex.hasMatch(email);

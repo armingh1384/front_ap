@@ -1,12 +1,13 @@
-
 import 'dart:convert';
 import 'dart:io';
 
 class SocketService {
   late Socket _socket;
- final String host;
+  final String host;
   final int port;
   bool isConnected = false;
+
+  Function(String message)? _onMessageCallback;
 
   SocketService({required this.host, required this.port});
 
@@ -20,7 +21,7 @@ class SocketService {
             (data) {
           final message = utf8.decode(data);
           print('Received: $message');
-          //EDAME KARR
+          _onMessageCallback?.call(message);
         },
         onDone: () {
           print('Connection closed by server');
@@ -49,5 +50,9 @@ class SocketService {
   void disconnect() {
     _socket.close();
     isConnected = false;
+  }
+
+  void setOnMessage(Function(String message) callback) {
+    _onMessageCallback = callback;
   }
 }

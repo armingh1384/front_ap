@@ -21,6 +21,35 @@ class _SignInScreenState extends State<SignInScreen> {
     super.initState();
     socketService = SocketService(host: '192.168.1.6', port: 10384);
     socketService.connect();
+    socketService.setOnMessage((message) {
+      final response = jsonDecode(message);
+      if (response['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Login successful'),
+            backgroundColor: Colors.green,
+          ),
+
+        );
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: _usernameController.text,
+        );
+
+        Future.delayed(Duration(seconds: 1), () {
+          Navigator.pushReplacementNamed(context, '/home');
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ ${response['message'] ?? 'Invalid username or password'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+
   }
 
   @override
