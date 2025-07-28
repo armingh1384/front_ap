@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
+import 'package:flutter_ap/services/socket_service.dart';
+import 'package:flutter_ap/widgets/loading_overlay.dart';
+import 'package:flutter_ap/utils/ui_helpers.dart';
+import 'dart:convert';
+=======
 import 'package:flutter_ap/sign_in_screen.dart';
 import 'package:flutter_ap/services/socket_service.dart';
 import 'dart:convert';
 
+>>>>>>> origin/master
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  _SignUpScreenState createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+<<<<<<< HEAD
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
+
+  late SocketService socketService;
+
+=======
   late SocketService socketService;
 
   final TextEditingController _usernameController = TextEditingController();
@@ -19,10 +35,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
 
+>>>>>>> origin/master
   @override
   void initState() {
     super.initState();
     socketService = SocketService(host: '192.168.1.6', port: 10384);
+<<<<<<< HEAD
+    socketService.connect();
+    socketService.setOnMessage((message) {
+      final response = jsonDecode(message);
+      setState(() => _isLoading = false);
+
+      if (response['status'] == 'success') {
+        showSuccessMessage(context, '✅ ثبت‌نام موفق بود');
+        Navigator.pop(context);
+      } else {
+        showErrorMessage(context, response['message'] ?? 'خطا در ثبت‌نام');
+      }
+    });
+  }
+
+  void _signUp() {
+    setState(() => _isLoading = true);
+    final request = {
+      'requestType': 'Authorization',
+      'action': 'signup',
+      'data': {
+        'username': _usernameController.text,
+        'password': _passwordController.text,
+        'email': _emailController.text,
+      },
+    };
+    socketService.sendMessage(request);
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _emailController.dispose();
+    socketService.disconnect();
+    super.dispose();
+  }
+=======
     socketService.connect().then((_) {
       socketService.setOnMessage((message) {
         final response = jsonDecode(message);
@@ -66,16 +121,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+>>>>>>> origin/master
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFF121212),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 24),
+    return LoadingOverlay(
+      isLoading: _isLoading,
+      child: Scaffold(
+        backgroundColor: Color(0xFF0E0E0E),
+        appBar: AppBar(
+          title: Text('ثبت‌نام', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        body: Padding(
+          padding: EdgeInsets.all(24),
           child: Column(
             children: [
+<<<<<<< HEAD
+              _buildInput(_usernameController, 'نام کاربری'),
+              SizedBox(height: 20),
+              _buildInput(_passwordController, 'رمز عبور', isPassword: true),
+              SizedBox(height: 20),
+              _buildInput(_emailController, 'ایمیل'),
+              SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: _signUp,
+                child: Text('ثبت‌نام'),
+=======
               Container(
                 width: 160,
                 height: 160,
@@ -197,6 +271,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                 ],
+>>>>>>> origin/master
               ),
             ],
           ),
@@ -205,17 +280,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+<<<<<<< HEAD
+  Widget _buildInput(TextEditingController controller, String label, {bool isPassword = false}) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+=======
   Widget _buildInputField({
     required String hint,
     required TextEditingController controller,
   }) {
     return TextField(
       controller: controller,
+>>>>>>> origin/master
       style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: label,
         hintStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
+<<<<<<< HEAD
+        fillColor: Colors.grey[850],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+=======
         fillColor: Color(0xFF1E1E1E),
         contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 25),
         border: OutlineInputBorder(
@@ -269,10 +355,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide(color: Color(0xFF2196F3)),
         ),
+>>>>>>> origin/master
       ),
     );
   }
 }
+<<<<<<< HEAD
+=======
 
 bool isValidEmail(String email) {
   final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -292,3 +381,4 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
     },
   );
 }
+>>>>>>> origin/master

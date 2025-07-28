@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_ap/sign_up_screen.dart';
 import 'package:flutter_ap/services/socket_service.dart';
+<<<<<<< HEAD
+import 'package:flutter_ap/widgets/loading_overlay.dart';
+import 'package:flutter_ap/utils/ui_helpers.dart';
+import 'package:flutter_ap/services/session_service.dart'; // افزودن این خط
+
+=======
+>>>>>>> origin/master
 import 'dart:convert';
 
 class SignInScreen extends StatefulWidget {
@@ -12,7 +19,15 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   late SocketService socketService;
+<<<<<<< HEAD
+  late SessionService sessionService;
+
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+=======
+  bool _obscurePassword = true;
+>>>>>>> origin/master
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -20,6 +35,31 @@ class _SignInScreenState extends State<SignInScreen> {
   void initState() {
     super.initState();
     socketService = SocketService(host: '192.168.1.6', port: 10384);
+<<<<<<< HEAD
+    sessionService = SessionService();
+
+    _checkPreviousLogin();
+    socketService.connect();
+    socketService.setOnMessage(_handleSocketMessage);
+  }
+
+  void _checkPreviousLogin() async {
+    String? username = await sessionService.getUsername();
+    if (username != null && mounted) {
+      Navigator.pushReplacementNamed(context, '/home', arguments: username);
+    }
+  }
+
+  void _handleSocketMessage(String message) async {
+    final response = jsonDecode(message);
+    setState(() => _isLoading = false);
+
+    if (response['status'] == 'success') {
+      await sessionService.saveUsername(_usernameController.text);
+
+      showSuccessMessage(context, '✅ ورود موفق بود');
+      Future.delayed(const Duration(milliseconds: 500), () {
+=======
     socketService.connect();
     socketService.setOnMessage((message) {
       final response = jsonDecode(message);
@@ -31,11 +71,18 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
 
         );
+>>>>>>> origin/master
         Navigator.pushReplacementNamed(
           context,
           '/home',
           arguments: _usernameController.text,
         );
+<<<<<<< HEAD
+      });
+    } else {
+      showErrorMessage(context, response['message'] ?? 'نام کاربری یا رمز عبور نادرست است');
+    }
+=======
 
         Future.delayed(Duration(seconds: 1), () {
           Navigator.pushReplacementNamed(context, '/home');
@@ -50,6 +97,7 @@ class _SignInScreenState extends State<SignInScreen> {
       }
     });
 
+>>>>>>> origin/master
   }
 
   @override
@@ -61,6 +109,19 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   void _signIn() {
+<<<<<<< HEAD
+    final request = {
+      'requestType': 'Authorization',
+      'action': 'login',
+      'data': {
+        'username': _usernameController.text.trim(),
+        'password': _passwordController.text.trim(),
+      },
+    };
+
+    setState(() => _isLoading = true);
+    socketService.sendMessage(request);
+=======
     try {
       final request = {
         'requestType': 'Authorization',
@@ -89,10 +150,47 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
       );
     }
+>>>>>>> origin/master
   }
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
+    return LoadingOverlay(
+      isLoading: _isLoading,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0E0E0E),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const Icon(Icons.music_note, size: 100, color: Colors.white),
+                const SizedBox(height: 60),
+                _buildInputField(hint: 'نام کاربری'),
+                const SizedBox(height: 20),
+                _buildPasswordField(),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _signIn,
+                    child: const Text('ورود'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                    );
+                  },
+                  child: const Text('ثبت‌نام نکرده‌اید؟ ثبت‌نام کنید'),
+                )
+              ],
+            ),
+=======
     return Scaffold(
       backgroundColor: Color(0xFF0E0E0E),
       body: Center(
@@ -185,6 +283,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 ],
               )
             ],
+>>>>>>> origin/master
           ),
         ),
       ),
@@ -194,25 +293,17 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget _buildInputField({required String hint}) {
     return TextField(
       controller: _usernameController,
+<<<<<<< HEAD
+      style: const TextStyle(color: Colors.white),
+=======
       style: TextStyle(color: Colors.white),
+>>>>>>> origin/master
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[500]),
+        hintStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
-        fillColor: Color(0xFF1C1C1E),
-        contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 25),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Color(0xFF2C2C2E)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Color(0xFF2C2C2E)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Color(0xFF1A73E8)),
-        ),
+        fillColor: Colors.grey[850],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
       ),
     );
   }
@@ -221,36 +312,20 @@ class _SignInScreenState extends State<SignInScreen> {
     return TextField(
       controller: _passwordController,
       obscureText: _obscurePassword,
-      style: TextStyle(color: Colors.white),
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        hintText: 'Password',
-        hintStyle: TextStyle(color: Colors.grey[500]),
+        hintText: 'رمز عبور',
+        hintStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
-        fillColor: Color(0xFF1C1C1E),
-        contentPadding: EdgeInsets.symmetric(vertical: 20, horizontal: 25),
+        fillColor: Colors.grey[850],
         suffixIcon: IconButton(
           icon: Icon(
-            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.grey[400],
+            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
           ),
-          onPressed: () {
-            setState(() {
-              _obscurePassword = !_obscurePassword;
-            });
-          },
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Color(0xFF2C2C2E)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Color(0xFF2C2C2E)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide(color: Color(0xFF1A73E8)),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
       ),
     );
   }
