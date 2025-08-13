@@ -1,64 +1,58 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_ap/sign_in_screen.dart';
-import 'package:flutter_ap/sign_up_screen.dart';
-<<<<<<< HEAD
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_ap/screens/sign_in_screen.dart';
 import 'package:flutter_ap/home_page.dart';
-import 'package:flutter_ap/screens/songs_page.dart';
-import 'package:flutter_ap/screens/profile_page.dart'; // ← اضافه کردن صفحه پروفایل
+import 'package:flutter_ap/services/session_service.dart';
 
-=======
-import 'package:flutter_ap/sign_in_screen.dart';
-import 'package:flutter_ap/home_page.dart';
->>>>>>> origin/master
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+
+
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isLoggedIn = false;
+  String? _username;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final loggedIn = await SessionService().isLoggedIn();
+    final username = await SessionService().getUsername();
+
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _username = username;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-<<<<<<< HEAD
       title: 'Music App',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0E0E0E),
-        primaryColor: Colors.deepPurple,
       ),
-      initialRoute: '/',
-      routes: {
-        /// صفحه ورود
-        '/': (context) => const SignInScreen(),
-
-        /// صفحه ثبت‌نام
-        '/signup': (context) => const SignUpScreen(),
-
-        /// صفحه اصلی (پس از ورود موفق)
-=======
-      initialRoute: '/',
-      routes: {
-        '/': (context) => SignInScreen(),
-        '/signup': (context) => SignUpScreen(),
->>>>>>> origin/master
-        '/home': (context) {
-          final username = ModalRoute.of(context)!.settings.arguments as String;
-          return HomePage(username: username);
-        },
-<<<<<<< HEAD
-
-        /// مسیر نمایش لیست آهنگ‌ها
-        '/songs': (context) => const SongsPage(),
-
-        /// مسیر پروفایل
-        '/profile': (context) {
-          final username = ModalRoute.of(context)!.settings.arguments as String;
-          return ProfilePage(username: username);
-        },
-=======
->>>>>>> origin/master
-      },
+      home: _isLoggedIn
+          ? HomePage(username: _username ?? '')
+          : SignInScreen(onLoginSuccess: _checkLoginStatus),
     );
   }
 }
