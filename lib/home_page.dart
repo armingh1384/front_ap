@@ -100,7 +100,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: const Color(0xFF1A1D22),
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: const Color(0xFF2196F3),
+        selectedItemColor:  Colors.purpleAccent,
         unselectedItemColor: Colors.grey[500],
         type: BottomNavigationBarType.fixed,
         items: const [
