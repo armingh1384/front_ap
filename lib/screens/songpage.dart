@@ -20,60 +20,142 @@ class SongsPage extends StatefulWidget {
 }
 
 class _SongsPageState extends State<SongsPage> {
-  List<Map<String, dynamic>> songs = [];
+  Map<String, List<Map<String, dynamic>>> playlists = {};
   bool _isUploading = false;
   bool _isLoadingGlobal = false;
+  String? currentPlaylist;
+  Map<String, List<int>> selectedIndicesPerPlaylist = {};
+  List<String> allPlaylistNames = [];
 
   @override
   void initState() {
     super.initState();
     widget.socketService.setOnMessage(_handleServerMessage);
-    _requestSongsList();
+    _requestAllPlaylists();
+  }
+
+  Future<void> _requestAllPlaylists() async {
+    final message = {
+      "requestType": "user",
+      "action": "getPlaylists",
+      "data": {
+        "username": widget.username
+      }
+    };
+    widget.socketService.sendMessage(message);
   }
 
   void _handleServerMessage(String message) {
     try {
       final Map<String, dynamic> response = jsonDecode(message.trim());
       if (response['status'] != 'success' || response['data'] == null) return;
-
       final data = response['data'] as Map<String, dynamic>;
+
+      if (data.containsKey('playlists')) {
+        final List<dynamic> receivedPlaylists = data['playlists'] as List;
+        Map<String, List<Map<String, dynamic>>> newPlaylists = {};
+        List<String> playlistNames = [];
+
+        for (var playlistData in receivedPlaylists) {
+          final String playlistName = playlistData['playlistname']?.toString() ?? "Unknown Playlist";
+          playlistNames.add(playlistName);
+          final List<Map<String, dynamic>> songs = [];
+
+          if (playlistData.containsKey('songs')) {
+            for (var song in playlistData['songs'] as List) {
+              if (song is Map) {
+                final songMap = song as Map<String, dynamic>;
+                songs.add({
+                  "id": songMap['id']?.toString() ?? UniqueKey().toString(),
+                  "title": songMap['name']?.toString() ?? 'Unknown',
+                  "artist": songMap['artist']?.toString() ?? widget.username,
+                  "base64Audio": songMap['base64Audio']?.toString() ?? '',
+                  "genre": songMap['genre']?.toString() ?? 'POP',
+                  "likes": songMap['likes'] ?? 0,
+                  "isLiked": songMap['isLiked'] ?? false,
+                  "album": songMap['album']?.toString() ?? '',
+                  "releaseYear": songMap['releaseYear'] ?? 2023,
+                });
+              }
+            }
+          }
+          newPlaylists[playlistName] = songs;
+        }
+
+        setState(() {
+          playlists = newPlaylists;
+          allPlaylistNames = playlistNames;
+          for (var name in playlistNames) {
+            selectedIndicesPerPlaylist[name] = [];
+          }
+          _isUploading = false;
+          _isLoadingGlobal = false;
+        });
+        return;
+      }
 
       if (data.containsKey('globalsongs')) {
         _showGlobalSongsDialog(data['globalsongs'] as List);
         return;
       }
 
-      final newSongs = <Map<String, dynamic>>[];
-
-      if (data.containsKey('songs')) {
-        for (var song in data['songs'] as List) {
-          if (song is Map) {
-            final songMap = song as Map<String, dynamic>;
-            newSongs.add({
-              "id": songMap['id']?.toString() ?? UniqueKey().toString(),
-              "title": songMap['name']?.toString() ?? 'Unknown',
-              "artist": songMap['artist']?.toString() ?? widget.username,
-              "base64Audio": songMap['base64Audio']?.toString() ?? '',
-              "genre": songMap['genre']?.toString() ?? 'POP',
-            });
-          }
+      if (response['action'] == 'likeSongResponse') {
+        if (response['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message'] ?? 'Like status updated')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message'] ?? 'Failed to update like status')),
+          );
         }
-      } else if (data.containsKey('song')) {
-        final song = data['song'] as Map<String, dynamic>;
-        newSongs.add({
-          "id": song['id']?.toString() ?? UniqueKey().toString(),
-          "title": song['name']?.toString() ?? 'Unknown',
-          "artist": song['artist']?.toString() ?? widget.username,
-          "base64Audio": song['base64Audio']?.toString() ?? '',
-          "genre": song['genre']?.toString() ?? 'POP',
-        });
+        _requestAllPlaylists();
+        return;
       }
 
-      setState(() {
-        songs = newSongs;
-        _isUploading = false;
-        _isLoadingGlobal = false;
-      });
+      if (response['action'] == 'removePlaylistResponse') {
+        if (response['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Playlist deleted successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete playlist')),
+          );
+        }
+        _requestAllPlaylists();
+        return;
+      }
+
+      if (response['action'] == 'removeSongResponse') {
+        if (response['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Song removed successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to remove song')),
+          );
+        }
+        _requestAllPlaylists();
+        return;
+      }
+
+      if (response['action'] == 'AddToNavaResponse') {
+        if (response['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message'] ?? 'Songs added to Nava')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message'] ?? 'Failed to add songs to Nava')),
+          );
+        }
+        _requestAllPlaylists();
+        return;
+      }
+
+      _requestAllPlaylists();
     } catch (e) {
       setState(() {
         _isUploading = false;
@@ -85,20 +167,15 @@ class _SongsPageState extends State<SongsPage> {
     }
   }
 
-  Future<void> _requestSongsList() async {
-    final message = {
-      "requestType": "user",
-      "action": "getSongs",
-      "data": {
-        "username": widget.username,
-        "playlistname": "My Playlist"
-      }
-    };
-    widget.socketService.sendMessage(message);
-  }
-
   Future<void> _pickAndUploadSong() async {
     if (_isUploading) return;
+    String? playlistName = await _askPlaylistNameDialog();
+    if (playlistName == null || playlistName.isEmpty) return;
+
+    setState(() {
+      currentPlaylist = playlistName;
+      _isUploading = true;
+    });
 
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -106,9 +183,10 @@ class _SongsPageState extends State<SongsPage> {
         allowedExtensions: ['mp3', 'wav', 'm4a'],
       );
 
-      if (result == null || result.files.single.path == null) return;
-
-      setState(() => _isUploading = true);
+      if (result == null || result.files.single.path == null) {
+        setState(() => _isUploading = false);
+        return;
+      }
 
       File file = File(result.files.single.path!);
       List<int> fileBytes = await file.readAsBytes();
@@ -119,7 +197,7 @@ class _SongsPageState extends State<SongsPage> {
         "action": "addSongToPlaylist",
         "data": {
           "username": widget.username,
-          "playlistname": "My Playlist",
+          "playlistname": playlistName,
           "name": result.files.single.name,
           "artist": widget.username,
           "base64Audio": base64Audio,
@@ -128,7 +206,9 @@ class _SongsPageState extends State<SongsPage> {
           "genre": "POP",
           "lyrics": "",
           "durationPlayed": 0,
-          "album": ""
+          "album": "",
+          "likes": 0,
+          "isLiked": false
         }
       };
 
@@ -141,26 +221,82 @@ class _SongsPageState extends State<SongsPage> {
     }
   }
 
-  Future<void> _addToGlobal(Map<String, dynamic> song) async {
+  Future<String?> _askPlaylistNameDialog() async {
+    String? playlistName;
+    await showDialog(
+      context: context,
+      builder: (context) {
+        TextEditingController controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Enter Playlist Name'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'Playlist name'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                playlistName = controller.text.trim();
+                Navigator.pop(context);
+              },
+              child: const Text('Submit'),
+            ),
+            TextButton(
+              onPressed: () {
+                playlistName = null;
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+    return playlistName;
+  }
+
+  Future<void> _addSelectedToNava(String playlistName) async {
+    final selectedIndices = selectedIndicesPerPlaylist[playlistName] ?? [];
+    if (selectedIndices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one song')),
+      );
+      return;
+    }
+
     setState(() => _isUploading = true);
 
     try {
-      final message = {
-        "requestType": "user",
-        "action": "AddtoNava",
-        "data": {
-          "username": widget.username,
-          "name": song["title"],
-          "base64": song["base64Audio"],
-          "genre": song["genre"] ?? "POP",
-        }
-      };
-
-      widget.socketService.sendMessage(message);
+      final songs = playlists[playlistName] ?? [];
+      for (int index in selectedIndices) {
+        final song = songs[index];
+        final message = {
+          "requestType": "user",
+          "action": "AddToNava",
+          "data": {
+            "username": widget.username,
+            "name": song["title"],
+            "base64Audio": song["base64Audio"],
+            "genre": song["genre"] ?? "POP",
+            "artist": song["artist"] ?? widget.username,
+            "album": song["album"] ?? "",
+            "releaseYear": song["releaseYear"] ?? 2023,
+          }
+        };
+        widget.socketService.sendMessage(message);
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Adding to global library...')),
+        SnackBar(
+          content: Text('${selectedIndices.length} songs added to Nava'),
+          duration: const Duration(seconds: 2),
+        ),
       );
+      setState(() {
+        selectedIndicesPerPlaylist[playlistName] = [];
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
@@ -170,85 +306,202 @@ class _SongsPageState extends State<SongsPage> {
     }
   }
 
+  Future<void> _removeSelectedSongs(String playlistName) async {
+    final selectedIndices = selectedIndicesPerPlaylist[playlistName] ?? [];
+    if (selectedIndices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one song')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text('Are you sure you want to delete ${selectedIndices.length} song(s)? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isUploading = true);
+      try {
+        final songs = playlists[playlistName] ?? [];
+        for (int index in selectedIndices) {
+          final song = songs[index];
+          final message = {
+            "requestType": "user",
+            "action": "removeSongFromPlaylist",
+            "data": {
+              "username": widget.username,
+              "playlistname": playlistName,
+
+                "id": song["id"] ?? "",
+                "name": song["title"] ?? "",
+                "artist": song["artist"] ?? widget.username,
+                "base64Audio": song["base64Audio"] ?? "",
+                "genre": song["genre"] ?? "POP",
+                "likes": song["likes"] ?? 0,
+                "isLiked": song["isLiked"] ?? false,
+                "album": song["album"] ?? "",
+                "releaseYear": song["releaseYear"] ?? 2023,
+                "lyrics": song["lyrics"] ?? "",
+                "durationPlayed": song["durationPlayed"] ?? 0,
+                "musicPath": song["musicPath"] ?? ""
+
+            }
+
+          };
+          widget.socketService.sendMessage(message);
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${selectedIndices.length} song(s) deleted')),
+        );
+        setState(() {
+          selectedIndicesPerPlaylist[playlistName] = [];
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      } finally {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
   Future<void> _importFromGlobal() async {
-    setState(() => _isLoadingGlobal = true);
+    String? playlistName = await _askPlaylistNameDialog();
+    if (playlistName == null || playlistName.isEmpty) return;
+
+    setState(() {
+      currentPlaylist = playlistName;
+      _isLoadingGlobal = true;
+    });
 
     final message = {
       "requestType": "user",
       "action": "ImportFromNava",
       "data": {}
     };
-
     widget.socketService.sendMessage(message);
   }
 
   Future<void> _showGlobalSongsDialog(List globalSongs) async {
     setState(() => _isLoadingGlobal = false);
+    List<int> selectedIndices = [];
+    String playlistName = currentPlaylist ?? "My Playlist";
 
-    final selected = await showDialog<Map<String, dynamic>>(
+    await showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Global Music Library'),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: globalSongs.length,
-            itemBuilder: (context, index) {
-              final song = globalSongs[index];
-              return ListTile(
-                leading: const Icon(Icons.music_note, color: Colors.purple),
-                title: Text(song['name'] ?? 'Unknown'),
-                subtitle: Text('By: ${song['username'] ?? 'Unknown'}'),
-                onTap: () => Navigator.pop(context, song),
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: globalSongs.length,
+                itemBuilder: (context, index) {
+                  final song = globalSongs[index];
+                  final isSelected = selectedIndices.contains(index);
+                  return ListTile(
+                    leading: const Icon(Icons.music_note, color: Colors.purple),
+                    title: Text(song['name'] ?? 'Unknown'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('By: ${song['username'] ?? 'Unknown'}'),
+                        Text('Genre: ${song['genre'] ?? 'Unknown'}'),
+                        if (song['likes'] != null)
+                          Text('Likes: ${song['likes']}'),
+                      ],
+                    ),
+                    tileColor: isSelected ? Colors.purple.shade100 : null,
+                    onTap: () {
+                      setStateDialog(() {
+                        if (isSelected) {
+                          selectedIndices.remove(index);
+                        } else {
+                          selectedIndices.add(index);
+                        }
+                      });
+                    },
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : null,
+                  );
+                },
               );
             },
           ),
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.pop(context, selectedIndices),
+            child: const Text('Import Selected'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
         ],
       ),
-    );
-
-    if (selected != null) {
-      setState(() => _isUploading = true);
-
-      try {
-        final importMessage = {
-          "requestType": "user",
-          "action": "addSongToPlaylist",
-          "data": {
-            "username": widget.username,
-            "playlistname": "My Playlist",
-            "name": selected["name"],
-            "artist": selected["username"] ?? "Global",
-            "base64Audio": selected["base64"],
-            "musicPath": "",
-            "releaseYear": 2023,
-            "genre": selected["genre"] ?? "POP",
-            "lyrics": "",
-            "durationPlayed": 0,
-            "album": ""
+    ).then((selectedIndices) async {
+      if (selectedIndices != null && selectedIndices is List<int> && selectedIndices.isNotEmpty) {
+        setState(() => _isUploading = true);
+        try {
+          for (var index in selectedIndices) {
+            final selected = globalSongs[index];
+            final importMessage = {
+              "requestType": "user",
+              "action": "addSongToPlaylist",
+              "data": {
+                "username": widget.username,
+                "playlistname": playlistName,
+                "name": selected["name"],
+                "artist": selected["username"] ?? "Global",
+                "base64Audio": selected["base64"],
+                "musicPath": "",
+                "releaseYear": selected["releaseYear"] ?? 2023,
+                "genre": selected["genre"] ?? "POP",
+                "lyrics": "",
+                "durationPlayed": 0,
+                "album": selected["album"] ?? "",
+                "likes": selected["likes"] ?? 0,
+                "isLiked": false
+              }
+            };
+            widget.socketService.sendMessage(importMessage);
+            await Future.delayed(const Duration(milliseconds: 200));
           }
-        };
 
-        widget.socketService.sendMessage(importMessage);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Song imported successfully!')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: ${e.toString()}')),
-        );
-      } finally {
-        setState(() => _isUploading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${selectedIndices.length} song(s) imported!')),
+          );
+          _requestAllPlaylists();
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Import failed: ${e.toString()}')),
+          );
+        } finally {
+          setState(() => _isUploading = false);
+        }
       }
-    }
+    });
   }
 
   Widget _buildImageWidget() {
@@ -263,104 +516,377 @@ class _SongsPageState extends State<SongsPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        title: const Text('My Playlist'),
+  void _toggleSelection(String playlistName, int index) {
+    setState(() {
+      List<int> selected = selectedIndicesPerPlaylist[playlistName] ?? [];
+      if (selected.contains(index)) {
+        selected.remove(index);
+      } else {
+        selected.add(index);
+      }
+      selectedIndicesPerPlaylist[playlistName] = selected;
+    });
+  }
+
+  Future<void> _showAddPlaylistDialog() async {
+    String? playlistName = await _askPlaylistNameDialog();
+    if (playlistName != null && playlistName.isNotEmpty) {
+      setState(() {
+        playlists[playlistName] = [];
+        selectedIndicesPerPlaylist[playlistName] = [];
+        allPlaylistNames.add(playlistName);
+      });
+
+      final message = {
+        "requestType": "user",
+        "action": "createPlaylist",
+        "data": {
+          "username": widget.username,
+          "playlistname": playlistName,
+        }
+      };
+
+      widget.socketService.sendMessage(message);
+    }
+  }
+
+  Future<void> _removePlaylist(String playlistName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text('Are you sure you want to delete the playlist "$playlistName"? This action cannot be undone.'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _requestSongsList,
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
-      body: _isUploading || _isLoadingGlobal
-          ? const Center(child: CircularProgressIndicator())
-          : songs.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.music_off, size: 50, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('No songs found'),
-            TextButton(
-              onPressed: _importFromGlobal,
-              child: const Text('Import from Global Library'),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isUploading = true);
+      final message = {
+        "requestType": "user",
+        "action": "removePlaylist",
+        "data": {
+          "username": widget.username,
+          "playlistname": playlistName,
+        }
+      };
+      widget.socketService.sendMessage(message);
+    }
+  }
+
+  Future<void> _toggleLikeSong(String playlistName, String songId, bool isCurrentlyLiked) async {
+    final message = {
+      "requestType": "user",
+      "action": "likeSong",
+      "data": {
+        "username": widget.username,
+        "playlistname": playlistName,
+        "songId": songId,
+        "like": !isCurrentlyLiked,
+      }
+    };
+    widget.socketService.sendMessage(message);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final playlistNames = playlists.keys.toList();
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      appBar: AppBar(
+        title: const Text('Playlists'),
+        backgroundColor: Colors.purple[900],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Add Playlist',
+            onPressed: _showAddPlaylistDialog,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: _isLoadingGlobal
+                        ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : const Icon(Icons.cloud_download),
+                    label: const Text('Import from Global'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _isLoadingGlobal ? null : _importFromGlobal,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: _isUploading
+                        ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : const Icon(Icons.add),
+                    label: const Text('Upload Song'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _isUploading ? null : _pickAndUploadSong,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      )
-          : ListView.builder(
-        itemCount: songs.length,
-        itemBuilder: (context, index) {
-          final song = songs[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 4),
-            color: Colors.grey[900],
-            child: ListTile(
-              leading: _buildImageWidget(),
-              title: Text(
-                song["title"] as String,
-                style: const TextStyle(color: Colors.white),
-              ),
-              subtitle: Text(
-                song["artist"] as String,
-                style: const TextStyle(color: Colors.white70),
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MusicPlayerPage(
-                      playlist: songs,
-                      initialIndex: index,
+          ),
+          Expanded(
+            child: _isUploading || _isLoadingGlobal
+                ? const Center(child: CircularProgressIndicator(color: Colors.purple))
+                : playlists.isEmpty
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.music_off, size: 50, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No playlists found',
+                    style: TextStyle(color: Colors.white70, fontSize: 18),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create New Playlist'),
+                    onPressed: _showAddPlaylistDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
                     ),
                   ),
-                );
-              },
-              trailing: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white70),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'add_to_global',
-                    child: Text('Add to Global Library'),
-                  ),
                 ],
-                onSelected: (value) {
-                  if (value == 'add_to_global') {
-                    _addToGlobal(song);
-                  }
-                },
               ),
+            )
+                : ListView(
+              children: playlistNames.map((playlistName) {
+                final songs = playlists[playlistName]!;
+                final selectedIndices = selectedIndicesPerPlaylist[playlistName] ?? [];
+                final hasSelection = selectedIndices.isNotEmpty;
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  color: Colors.grey[900],
+                  child: ExpansionTile(
+                    title: Row(
+                      children: [
+                        const Icon(Icons.queue_music, color: Colors.purpleAccent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            playlistName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        if (!hasSelection)
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.redAccent),
+                            onPressed: () => _removePlaylist(playlistName),
+                            tooltip: 'Delete Playlist',
+                          ),
+                      ],
+                    ),
+                    children: [
+                      if (songs.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                const Icon(Icons.music_off, color: Colors.grey, size: 40),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'This playlist is empty',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        ListView.builder(
+                          itemCount: songs.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final song = songs[index];
+                            final isSelected = selectedIndices.contains(index);
+                            final isLiked = song['isLiked'] ?? false;
+                            final likes = song['likes'] ?? 0;
+
+                            return InkWell(
+                              onLongPress: () => _toggleSelection(playlistName, index),
+                              onTap: () {
+                                if (hasSelection) {
+                                  _toggleSelection(playlistName, index);
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MusicPlayerPage(
+                                        playlist: songs,
+                                        initialIndex: index,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.purple.withOpacity(0.3)
+                                      : Colors.grey[850],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: ListTile(
+                                  leading: _buildImageWidget(),
+                                  title: Text(
+                                    song["title"] as String,
+                                    style: const TextStyle(color: Colors.white),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${song["artist"] as String} • ${song["album"] ?? "No Album"}',
+                                    style: const TextStyle(color: Colors.white70),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (hasSelection)
+                                        Icon(
+                                          Icons.check_circle,
+                                          color: isSelected ? Colors.green : Colors.transparent,
+                                        )
+                                      else
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(
+                                                isLiked ? Icons.favorite : Icons.favorite_border,
+                                                color: isLiked ? Colors.red : Colors.white70,
+                                              ),
+                                              onPressed: () => _toggleLikeSong(
+                                                playlistName,
+                                                song['id'],
+                                                isLiked,
+                                              ),
+                                              iconSize: 20,
+                                              padding: EdgeInsets.zero,
+                                            ),
+                                            Text(
+                                              likes.toString(),
+                                              style: TextStyle(
+                                                color: isLiked ? Colors.red : Colors.white70,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (hasSelection)
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: _isUploading
+                                      ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                      : const Icon(Icons.share),
+                                  label: Text('Add ${selectedIndices.length} to Nava'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  onPressed: _isUploading
+                                      ? null
+                                      : () => _addSelectedToNava(playlistName),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: _isUploading
+                                      ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                      : const Icon(Icons.delete, color: Colors.white),
+                                  label: Text('Delete ${selectedIndices.length}'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  onPressed: _isUploading
+                                      ? null
+                                      : () => _removeSelectedSongs(playlistName),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        },
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: _isUploading ? null : _pickAndUploadSong,
-            backgroundColor: Colors.purpleAccent,
-            child: _isUploading
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Icon(Icons.add),
-            heroTag: 'upload',
-            tooltip: 'Upload Song',
-          ),
-          const SizedBox(height: 16),
-          FloatingActionButton(
-            onPressed: _isLoadingGlobal ? null : _importFromGlobal,
-            backgroundColor: Colors.blueAccent,
-            child: _isLoadingGlobal
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Icon(Icons.cloud_download),
-            heroTag: 'import',
-            tooltip: 'Import from Global',
           ),
         ],
       ),
