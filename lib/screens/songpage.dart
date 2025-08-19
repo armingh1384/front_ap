@@ -71,7 +71,7 @@ class _SongsPageState extends State<SongsPage> {
                   "artist": songMap['artist']?.toString() ?? widget.username,
                   "base64Audio": songMap['base64Audio']?.toString() ?? '',
                   "genre": songMap['genre']?.toString() ?? 'POP',
-                  "likes": songMap['likes'] ?? 0,
+                  "countoflikes": songMap['countoflikes'] ?? 0,
                   "isLiked": songMap['isLiked'] ?? false,
                   "album": songMap['album']?.toString() ?? '',
                   "releaseYear": songMap['releaseYear'] ?? 2023,
@@ -100,57 +100,21 @@ class _SongsPageState extends State<SongsPage> {
       }
 
       if (response['action'] == 'likeSongResponse') {
-        if (response['status'] == 'success') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response['message'] ?? 'Like status updated')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response['message'] ?? 'Failed to update like status')),
-          );
-        }
         _requestAllPlaylists();
         return;
       }
 
       if (response['action'] == 'removePlaylistResponse') {
-        if (response['status'] == 'success') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Playlist deleted successfully')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete playlist')),
-          );
-        }
         _requestAllPlaylists();
         return;
       }
 
       if (response['action'] == 'removeSongResponse') {
-        if (response['status'] == 'success') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Song removed successfully')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to remove song')),
-          );
-        }
         _requestAllPlaylists();
         return;
       }
 
       if (response['action'] == 'AddToNavaResponse') {
-        if (response['status'] == 'success') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response['message'] ?? 'Songs added to Nava')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response['message'] ?? 'Failed to add songs to Nava')),
-          );
-        }
         _requestAllPlaylists();
         return;
       }
@@ -161,9 +125,6 @@ class _SongsPageState extends State<SongsPage> {
         _isUploading = false;
         _isLoadingGlobal = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
     }
   }
 
@@ -207,7 +168,7 @@ class _SongsPageState extends State<SongsPage> {
           "lyrics": "",
           "durationPlayed": 0,
           "album": "",
-          "likes": 0,
+          "countoflikes": 0,
           "isLiked": false
         }
       };
@@ -215,9 +176,6 @@ class _SongsPageState extends State<SongsPage> {
       widget.socketService.sendMessage(message);
     } catch (e) {
       setState(() => _isUploading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Upload failed: ${e.toString()}')),
-      );
     }
   }
 
@@ -258,12 +216,7 @@ class _SongsPageState extends State<SongsPage> {
 
   Future<void> _addSelectedToNava(String playlistName) async {
     final selectedIndices = selectedIndicesPerPlaylist[playlistName] ?? [];
-    if (selectedIndices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one song')),
-      );
-      return;
-    }
+    if (selectedIndices.isEmpty) return;
 
     setState(() => _isUploading = true);
 
@@ -288,19 +241,9 @@ class _SongsPageState extends State<SongsPage> {
         await Future.delayed(const Duration(milliseconds: 200));
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${selectedIndices.length} songs added to Nava'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
       setState(() {
         selectedIndicesPerPlaylist[playlistName] = [];
       });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
     } finally {
       setState(() => _isUploading = false);
     }
@@ -308,18 +251,13 @@ class _SongsPageState extends State<SongsPage> {
 
   Future<void> _removeSelectedSongs(String playlistName) async {
     final selectedIndices = selectedIndicesPerPlaylist[playlistName] ?? [];
-    if (selectedIndices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one song')),
-      );
-      return;
-    }
+    if (selectedIndices.isEmpty) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete ${selectedIndices.length} song(s)? This action cannot be undone.'),
+        content: Text('Are you sure you want to delete ${selectedIndices.length} song(s)?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -343,39 +281,23 @@ class _SongsPageState extends State<SongsPage> {
             "requestType": "user",
             "action": "removeSongFromPlaylist",
             "data": {
-              "username": widget.username,
               "playlistname": playlistName,
-
-                "id": song["id"] ?? "",
-                "name": song["title"] ?? "",
-                "artist": song["artist"] ?? widget.username,
-                "base64Audio": song["base64Audio"] ?? "",
-                "genre": song["genre"] ?? "POP",
-                "likes": song["likes"] ?? 0,
-                "isLiked": song["isLiked"] ?? false,
-                "album": song["album"] ?? "",
-                "releaseYear": song["releaseYear"] ?? 2023,
-                "lyrics": song["lyrics"] ?? "",
-                "durationPlayed": song["durationPlayed"] ?? 0,
-                "musicPath": song["musicPath"] ?? ""
-
+              "username": widget.username,
+              "name": song["title"],
+              "base64Audio": song["base64Audio"],
+              "genre": song["genre"] ?? "POP",
+              "artist": song["artist"] ?? widget.username,
+              "album": song["album"] ?? "",
+              "releaseYear": song["releaseYear"] ?? 2023,
             }
-
           };
           widget.socketService.sendMessage(message);
           await Future.delayed(const Duration(milliseconds: 200));
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${selectedIndices.length} song(s) deleted')),
-        );
         setState(() {
           selectedIndicesPerPlaylist[playlistName] = [];
         });
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
       } finally {
         setState(() => _isUploading = false);
       }
@@ -426,8 +348,8 @@ class _SongsPageState extends State<SongsPage> {
                       children: [
                         Text('By: ${song['username'] ?? 'Unknown'}'),
                         Text('Genre: ${song['genre'] ?? 'Unknown'}'),
-                        if (song['likes'] != null)
-                          Text('Likes: ${song['likes']}'),
+                        if (song['countoflikes'] != null)
+                          Text('Likes: ${song['countoflikes']}'),
                       ],
                     ),
                     tileColor: isSelected ? Colors.purple.shade100 : null,
@@ -481,22 +403,14 @@ class _SongsPageState extends State<SongsPage> {
                 "lyrics": "",
                 "durationPlayed": 0,
                 "album": selected["album"] ?? "",
-                "likes": selected["likes"] ?? 0,
+                "countoflikes": selected["countoflikes"] ?? 0,
                 "isLiked": false
               }
             };
             widget.socketService.sendMessage(importMessage);
             await Future.delayed(const Duration(milliseconds: 200));
           }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${selectedIndices.length} song(s) imported!')),
-          );
           _requestAllPlaylists();
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Import failed: ${e.toString()}')),
-          );
         } finally {
           setState(() => _isUploading = false);
         }
@@ -555,7 +469,7 @@ class _SongsPageState extends State<SongsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete the playlist "$playlistName"? This action cannot be undone.'),
+        content: Text('Are you sure you want to delete the playlist "$playlistName"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -583,17 +497,33 @@ class _SongsPageState extends State<SongsPage> {
     }
   }
 
-  Future<void> _toggleLikeSong(String playlistName, String songId, bool isCurrentlyLiked) async {
+  Future<void> _toggleLikeSong(String playlistName, Map<String, dynamic> song, bool isCurrentlyLiked) async {
+    setState(() {
+      final songs = playlists[playlistName];
+      if (songs != null) {
+        final songIndex = songs.indexWhere((s) => s['id'] == song['id']);
+        if (songIndex != -1) {
+          final currentLikes = songs[songIndex]['countoflikes'] ?? 0;
+          songs[songIndex] = {
+            ...songs[songIndex],
+            'isLiked': !isCurrentlyLiked,
+            'countoflikes': isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
+          };
+        }
+      }
+    });
+
     final message = {
       "requestType": "user",
       "action": "likeSong",
       "data": {
         "username": widget.username,
         "playlistname": playlistName,
-        "songId": songId,
-        "like": !isCurrentlyLiked,
+        "songname": song['title'],
+        "isLiked": !isCurrentlyLiked,
       }
     };
+
     widget.socketService.sendMessage(message);
   }
 
@@ -608,7 +538,6 @@ class _SongsPageState extends State<SongsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Add Playlist',
             onPressed: _showAddPlaylistDialog,
           ),
         ],
@@ -717,7 +646,6 @@ class _SongsPageState extends State<SongsPage> {
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.redAccent),
                             onPressed: () => _removePlaylist(playlistName),
-                            tooltip: 'Delete Playlist',
                           ),
                       ],
                     ),
@@ -747,7 +675,6 @@ class _SongsPageState extends State<SongsPage> {
                             final song = songs[index];
                             final isSelected = selectedIndices.contains(index);
                             final isLiked = song['isLiked'] ?? false;
-                            final likes = song['likes'] ?? 0;
 
                             return InkWell(
                               onLongPress: () => _toggleSelection(playlistName, index),
@@ -797,7 +724,7 @@ class _SongsPageState extends State<SongsPage> {
                                           color: isSelected ? Colors.green : Colors.transparent,
                                         )
                                       else
-                                        Column(
+                                        Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
@@ -807,17 +734,19 @@ class _SongsPageState extends State<SongsPage> {
                                               ),
                                               onPressed: () => _toggleLikeSong(
                                                 playlistName,
-                                                song['id'],
+                                                song,
+
                                                 isLiked,
                                               ),
                                               iconSize: 20,
                                               padding: EdgeInsets.zero,
                                             ),
+                                            SizedBox(width: 4),
                                             Text(
-                                              likes.toString(),
+                                              song['countoflikes']?.toString() ?? '0',
                                               style: TextStyle(
                                                 color: isLiked ? Colors.red : Colors.white70,
-                                                fontSize: 10,
+                                                fontSize: 12,
                                               ),
                                             ),
                                           ],
