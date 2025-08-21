@@ -20,19 +20,18 @@ class FavoritesPage extends StatefulWidget {
 class _FavoritesPageState extends State<FavoritesPage> {
   List<Map<String, dynamic>> favoriteSongs = [];
   bool _isLoading = true;
-  int? currentlyPlayingIndex;
 
   @override
   void initState() {
     super.initState();
     widget.socketService.setOnMessage(_handleServerMessage);
-    _requestFavoriteSongs();
+    _requestPlaylists();
   }
 
-  void _requestFavoriteSongs() {
+  void _requestPlaylists() {
     final message = {
       "requestType": "user",
-      "action": "getFavoriteSongs",
+      "action": "getPlaylists",
       "data": {
         "username": widget.username
       }
@@ -47,74 +46,26 @@ class _FavoritesPageState extends State<FavoritesPage> {
       if (response['status'] == 'success' && response['data'] != null) {
         final data = response['data'] as Map<String, dynamic>;
 
-        if (data.containsKey('favoriteSongs')) {
-          final List<dynamic> receivedSongs = data['favoriteSongs'] as List;
-          List<Map<String, dynamic>> newFavoriteSongs = [];
+        if (data.containsKey('playlists')) {
+          final List<dynamic> receivedPlaylists = data['playlists'] as List;
+          List<Map<String, dynamic>> allSongs = [];
 
-          for (var songData in receivedSongs) {
-            newFavoriteSongs.add({
-              "id": songData['id']?.toString() ?? UniqueKey().toString(),
-              "title": songData['name']?.toString() ?? 'Unknown',
-              "artist": songData['artist']?.toString() ?? 'Unknown',
-              "base64Audio": songData['base64Audio']?.toString() ?? '',
-              "genre": songData['genre']?.toString() ?? 'POP',
-              "countoflikes": songData['countoflikes'] ?? 0,
-              "isLiked": true,
-              "album": songData['album']?.toString() ?? '',
-              "releaseYear": songData['releaseYear'] ?? 2023,
-              "playlistName": songData['playlistName']?.toString() ?? 'Unknown Playlist',
-            });
-          }
+          // جمع‌آوری همه آهنگ‌ها از تمام پلی‌لیست‌ها
+          for (var playlistData in receivedPlaylists) {
+            final String playlistName = playlistData['playlistname']?.toString() ?? "Unknown Playlist";
 
-          setState(() {
-            favoriteSongs = newFavoriteSongs;
-            _isLoading = false;
-          });
-          return;
-        }
-      }
-
-      _getFavoritesFromAllPlaylists();
-    } catch (e) {
-      _getFavoritesFromAllPlaylists();
-    }
-  }
-
-  void _getFavoritesFromAllPlaylists() {
-    final message = {
-      "requestType": "user",
-      "action": "getPlaylists",
-      "data": {
-        "username": widget.username
-      }
-    };
-    widget.socketService.sendMessage(message);
-  }
-
-  void _processPlaylistsForFavorites(Map<String, dynamic> response) {
-    if (response['status'] == 'success' && response['data'] != null) {
-      final data = response['data'] as Map<String, dynamic>;
-
-      if (data.containsKey('playlists')) {
-        final List<dynamic> receivedPlaylists = data['playlists'] as List;
-        List<Map<String, dynamic>> newFavoriteSongs = [];
-
-        for (var playlistData in receivedPlaylists) {
-          final String playlistName = playlistData['playlistname']?.toString() ?? "Unknown Playlist";
-
-          if (playlistData.containsKey('songs')) {
-            for (var song in playlistData['songs'] as List) {
-              if (song is Map) {
-                final songMap = song as Map<String, dynamic>;
-                if (songMap['isLiked'] == true) {
-                  newFavoriteSongs.add({
+            if (playlistData.containsKey('songs')) {
+              for (var song in playlistData['songs'] as List) {
+                if (song is Map) {
+                  final songMap = song as Map<String, dynamic>;
+                  allSongs.add({
                     "id": songMap['id']?.toString() ?? UniqueKey().toString(),
                     "title": songMap['name']?.toString() ?? 'Unknown',
                     "artist": songMap['artist']?.toString() ?? 'Unknown',
                     "base64Audio": songMap['base64Audio']?.toString() ?? '',
                     "genre": songMap['genre']?.toString() ?? 'POP',
-                    "countoflikes": songMap['countoflikes'] ?? 0,
-                    "isLiked": true,
+                    "countOfLikes": songMap['countOfLikes'] ?? 0,
+                    "isLiked": songMap['isLiked'] ?? false,
                     "album": songMap['album']?.toString() ?? '',
                     "releaseYear": songMap['releaseYear'] ?? 2023,
                     "playlistName": playlistName,
@@ -123,33 +74,49 @@ class _FavoritesPageState extends State<FavoritesPage> {
               }
             }
           }
-        }
 
-        setState(() {
-          favoriteSongs = newFavoriteSongs;
-          _isLoading = false;
-        });
+          List<Map<String, dynamic>> likedSongs = allSongs.where((song) => song['isLiked'] == true).toList();
+
+          setState(() {
+            favoriteSongs = likedSongs;
+            _isLoading = false;
+          });
+          return;
+        }
       }
+
+      setState(() {
+        _isLoading = false;
+        favoriteSongs = [];
+      });
+
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        favoriteSongs = [];
+      });
     }
   }
 
   Future<void> _toggleLikeSong(Map<String, dynamic> song) async {
-    setState(() {
-      favoriteSongs.removeWhere((s) => s['id'] == song['id']);
-    });
-
     final message = {
       "requestType": "user",
       "action": "likeSong",
       "data": {
         "username": widget.username,
         "playlistname": song['playlistName'],
-        "songname": song['title'],
+        "name": song['title'],
         "isLiked": false,
       }
     };
 
     widget.socketService.sendMessage(message);
+
+    setState(() {
+      favoriteSongs.removeWhere((s) => s['id'] == song['id']);
+    });
+
+    _requestPlaylists();
   }
 
   Widget _buildImageWidget() {
@@ -186,7 +153,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _requestFavoriteSongs,
+            onPressed: _requestPlaylists,
           ),
         ],
       ),
@@ -251,16 +218,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   IconButton(
                     icon: Icon(
                       Icons.favorite,
-                      color: isLiked ? Colors.red : Colors.white70,
+                      color: Colors.red,
                     ),
                     onPressed: () => _toggleLikeSong(song),
                     iconSize: 20,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    song['countoflikes']?.toString() ?? '0',
-                    style: TextStyle(
-                      color: isLiked ? Colors.red : Colors.white70,
+                    song['countOfLikes']?.toString() ?? '0',
+                    style: const TextStyle(
+                      color: Colors.red,
                       fontSize: 12,
                     ),
                   ),

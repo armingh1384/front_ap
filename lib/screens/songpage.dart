@@ -71,7 +71,7 @@ class _SongsPageState extends State<SongsPage> {
                   "artist": songMap['artist']?.toString() ?? widget.username,
                   "base64Audio": songMap['base64Audio']?.toString() ?? '',
                   "genre": songMap['genre']?.toString() ?? 'POP',
-                  "countoflikes": songMap['countoflikes'] ?? 0,
+                  "countOfLikes": songMap['countOfLikes'] ?? 0,
                   "isLiked": songMap['isLiked'] ?? false,
                   "album": songMap['album']?.toString() ?? '',
                   "releaseYear": songMap['releaseYear'] ?? 2023,
@@ -168,7 +168,7 @@ class _SongsPageState extends State<SongsPage> {
           "lyrics": "",
           "durationPlayed": 0,
           "album": "",
-          "countoflikes": 0,
+          "countOfLikes": 0,
           "isLiked": false
         }
       };
@@ -235,6 +235,7 @@ class _SongsPageState extends State<SongsPage> {
             "artist": song["artist"] ?? widget.username,
             "album": song["album"] ?? "",
             "releaseYear": song["releaseYear"] ?? 2023,
+            "countOfLikes":song["countOfLikes"]
           }
         };
         widget.socketService.sendMessage(message);
@@ -348,8 +349,8 @@ class _SongsPageState extends State<SongsPage> {
                       children: [
                         Text('By: ${song['username'] ?? 'Unknown'}'),
                         Text('Genre: ${song['genre'] ?? 'Unknown'}'),
-                        if (song['countoflikes'] != null)
-                          Text('Likes: ${song['countoflikes']}'),
+                        if (song['countOfLikes'] != null)
+                          Text('Likes: ${song['countOfLikes']}'),
                       ],
                     ),
                     tileColor: isSelected ? Colors.purple.shade100 : null,
@@ -403,7 +404,7 @@ class _SongsPageState extends State<SongsPage> {
                 "lyrics": "",
                 "durationPlayed": 0,
                 "album": selected["album"] ?? "",
-                "countoflikes": selected["countoflikes"] ?? 0,
+                "countOfLikes": selected["countOfLikes"] ?? 0,
                 "isLiked": false
               }
             };
@@ -503,11 +504,11 @@ class _SongsPageState extends State<SongsPage> {
       if (songs != null) {
         final songIndex = songs.indexWhere((s) => s['id'] == song['id']);
         if (songIndex != -1) {
-          final currentLikes = songs[songIndex]['countoflikes'] ?? 0;
+          final currentLikes = songs[songIndex]['countOfLikes'] ?? 0;
           songs[songIndex] = {
             ...songs[songIndex],
             'isLiked': !isCurrentlyLiked,
-            'countoflikes': isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
+            'countOfLikes': isCurrentlyLiked ? currentLikes - 1 : currentLikes + 1,
           };
         }
       }
@@ -519,7 +520,7 @@ class _SongsPageState extends State<SongsPage> {
       "data": {
         "username": widget.username,
         "playlistname": playlistName,
-        "songname": song['title'],
+        "name": song["title"],
         "isLiked": !isCurrentlyLiked,
       }
     };
@@ -743,7 +744,7 @@ class _SongsPageState extends State<SongsPage> {
                                             ),
                                             SizedBox(width: 4),
                                             Text(
-                                              song['countoflikes']?.toString() ?? '0',
+                                              song['countOfLikes']?.toString() ?? '0',
                                               style: TextStyle(
                                                 color: isLiked ? Colors.red : Colors.white70,
                                                 fontSize: 12,

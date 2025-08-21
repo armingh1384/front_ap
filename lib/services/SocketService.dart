@@ -12,6 +12,12 @@ class SocketService {
   Function(String message)? _onMessageCallback;
 
   SocketService({required this.host, required this.port});
+  Future<void> disconnect() async {
+    if (_socket != null) {
+      _socket!.destroy();
+      _socket = null;
+    }
+  }
 
   Future<void> connect() async {
     try {
@@ -68,11 +74,7 @@ class SocketService {
     print('Sent: $jsonString');
   }
 
-  void disconnect() {
-    _socket?.destroy();
-    isConnected = false;
-    _socket = null;
-  }
+
 
   void setOnMessage(Function(String message) callback) {
     _onMessageCallback = callback;

@@ -8,6 +8,7 @@ import 'package:flutter_ap/services/session_service.dart';
 import 'package:flutter_ap/services/SocketService.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_ap/screens/MusicPlayer.dart';
+import 'dart:async';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -30,6 +31,10 @@ class _HomePageState extends State<HomePage> {
   Duration _totalDuration = Duration.zero;
   String _currentSongTitle = '';
 
+  StreamSubscription<PlayerState>? _playerStateSub;
+  StreamSubscription<Duration>? _durationSub;
+  StreamSubscription<Duration>? _positionSub;
+
   @override
   void initState() {
     super.initState();
@@ -39,41 +44,57 @@ class _HomePageState extends State<HomePage> {
     _pages = [
       SongsPage(username: widget.username, socketService: socketService),
       const DiscoverPage(),
-    FavoritesPage(username: widget.username, socketService: socketService),
+      FavoritesPage(username: widget.username, socketService: socketService),
       ProfilePage(username: widget.username),
     ];
 
     _audioPlayer = GlobalAudioPlayer().audioPlayer;
 
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() {
-        _isPlaying = state == PlayerState.playing;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _playerStateSub = _audioPlayer.onPlayerStateChanged.listen((state) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = state == PlayerState.playing;
+          });
+        }
       });
-    });
 
-    _audioPlayer.onDurationChanged.listen((duration) {
-      setState(() {
-        _totalDuration = duration;
+      _durationSub = _audioPlayer.onDurationChanged.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _totalDuration = duration;
+          });
+        }
       });
-    });
 
-    _audioPlayer.onPositionChanged.listen((position) {
-      setState(() {
-        _currentPosition = position;
+      _positionSub = _audioPlayer.onPositionChanged.listen((position) {
+        if (mounted) {
+          setState(() {
+            _currentPosition = position;
+          });
+        }
       });
-    });
 
-    GlobalAudioPlayer().currentSongTitle.addListener(() {
+      GlobalAudioPlayer().currentSongTitle.addListener(_updateSongTitle);
+    });
+  }
+
+  void _updateSongTitle() {
+    if (mounted) {
       setState(() {
         _currentSongTitle = GlobalAudioPlayer().currentSongTitle.value;
       });
-    });
+    }
   }
 
   @override
   void dispose() {
+    _playerStateSub?.cancel();
+    _durationSub?.cancel();
+    _positionSub?.cancel();
+    GlobalAudioPlayer().currentSongTitle.removeListener(_updateSongTitle);
+
     socketService.disconnect();
-    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -84,31 +105,40 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _logout() async {
-    await SessionService().clearSession();
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SignInScreen(
-          onLoginSuccess: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomePage(username: widget.username),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
+    try {
+      try {
+        await _audioPlayer.stop();
+      } catch (e) {
+        print('Error stopping audio: $e');
+      }
 
-  void _playNextSong() {
-    GlobalAudioPlayer().playNext();
-  }
+      try {
+        await GlobalAudioPlayer().reset();
+      } catch (e) {
+        print('Error resetting player: $e');
+      }
 
-  void _playPreviousSong() {
-    GlobalAudioPlayer().playPrevious();
+      await SessionService().clearSession();
+
+      socketService.disconnect();
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => SignInScreen()),
+            (route) => false,
+      );
+
+    } catch (e) {
+      print('Logout error: $e');
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => SignInScreen()),
+            (route) => false,
+      );
+    }
   }
 
   @override
@@ -117,19 +147,24 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1D22),
-        title: Row(
-          children: const [
-            Icon(Icons.music_note, color: Colors.white70),
-            SizedBox(width: 8),
-            Text(
-              'Nava',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 22,
-                color: Colors.white,
+        automaticallyImplyLeading: false,
+        title: Container(
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.music_note, color: Colors.white70),
+              SizedBox(width: 8),
+              Text(
+                'Nava',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 22,
+                  color: Colors.white,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         centerTitle: false,
         actions: [
@@ -325,8 +360,7 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                 ],
-              )
-,
+              ),
           ],
         ),
       ),
