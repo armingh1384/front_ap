@@ -14,20 +14,16 @@ class GlobalAudioPlayer {
   final AudioPlayer audioPlayer = AudioPlayer();
   String? _tempFilePath;
 
-  // وضعیت
   final ValueNotifier<bool> isPlaying = ValueNotifier(false);
   final ValueNotifier<String> currentSongTitle = ValueNotifier('');
   final ValueNotifier<Duration> currentPosition = ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> totalDuration = ValueNotifier(Duration.zero);
 
-  // پلی‌لیست و ایندکس
   final ValueNotifier<List<Map<String, dynamic>>> currentPlaylist = ValueNotifier([]);
   final ValueNotifier<int> currentIndex = ValueNotifier(0);
 
-  // سرعت پخش
   double playbackRate = 1.0;
 
-  // اختیاری: callbackهایی که MusicPlayerPage می‌تونه ست کنه
   Future<void> Function()? onNextPressed;
   Future<void> Function()? onPreviousPressed;
   VoidCallback? onPlayPausePressed;
@@ -38,7 +34,6 @@ class GlobalAudioPlayer {
   StreamSubscription? _completeSub;
 
   GlobalAudioPlayer._internal() {
-    // لیسنرهای سراسری
     _posSub = audioPlayer.onPositionChanged.listen((pos) {
       currentPosition.value = pos;
     });
@@ -49,7 +44,6 @@ class GlobalAudioPlayer {
       isPlaying.value = state == PlayerState.playing;
     });
     _completeSub = audioPlayer.onPlayerComplete.listen((_) async {
-      // Auto-next حتی اگر callback نباشه
       await playNext();
     });
   }

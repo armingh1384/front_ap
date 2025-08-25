@@ -50,7 +50,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
           final List<dynamic> receivedPlaylists = data['playlists'] as List;
           List<Map<String, dynamic>> allSongs = [];
 
-          // جمع‌آوری همه آهنگ‌ها از تمام پلی‌لیست‌ها
           for (var playlistData in receivedPlaylists) {
             final String playlistName = playlistData['playlistname']?.toString() ?? "Unknown Playlist";
 
