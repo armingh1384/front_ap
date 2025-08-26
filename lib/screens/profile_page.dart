@@ -40,7 +40,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     oldusername = widget.username;
 
-    socketService = SocketService(host: '10.167.177.165', port: 10384);
+    socketService = SocketService(host: '10.134.120.165', port: 10384);
 
     socketService.connect().then((_) {
       userService = UserService(socketService);

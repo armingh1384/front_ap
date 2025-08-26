@@ -29,7 +29,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
-    socketService = SocketService(host: '10.167.177.165', port: 10384);
+    socketService = SocketService(host: '10.134.120.165', port: 10384);
     _initializeSocket();
   }
 

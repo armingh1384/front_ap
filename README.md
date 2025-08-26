@@ -1,16 +1,26 @@
-# flutter_ap
+### Music App (flutter_ap)
 
-A new Flutter project.
+Modern, cross‑platform music application built with Flutter. It includes authentication, discovery, playlists, favorites, and an integrated audio player.
 
-## Getting Started
+## Features
+- **Cross‑platform**: Runs on Android, iOS, Web, Windows, macOS, and Linux
+- **Authentication**: Sign up, sign in, and session persistence
+- **Discover**: Browse and discover songs in server that other users share them musics in.
+- **Favorites**: Mark and view favorite tracks and control the count of likes
+- **Playlists**: Create and manage playlists
+- **Music player**: Play/pause/seek audio with `audioplayers` and also can control your all over the app.
+- **Profile**: View and edit basic profile information and also delete your account
 
-This project is a starting point for a Flutter application.
+- **Persistent storage**: Local data/session with `hive`/`hive_flutter`
+- **File picking**: Select files using `file_picker` (platform‑aware)
+- **Assets pipeline**: Uses images from `assets/images/`
 
-A few resources to get you started if this is your first Flutter project:
+## Tech stack
+- **Framework**: Flutter (Dart SDK constraint: ^3.7.2)
+- **UI**: Material design (dark theme)
+- **Local storage**: `hive`, `hive_flutter`
+- **Audio**: `audioplayers`
+- **File system**: `path_provider`, `file_picker`
+- **Icons**: `cupertino_icons`
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## screenshots

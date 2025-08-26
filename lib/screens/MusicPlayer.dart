@@ -63,13 +63,11 @@ class GlobalAudioPlayer {
     await audioPlayer.setPlaybackRate(rate);
   }
 
-  /// پخش از ایندکس فعلی (fallback مستقل از UI)
   Future<void> _playFromCurrentIndex() async {
     if (currentPlaylist.value.isEmpty) return;
     final i = currentIndex.value;
     final song = currentPlaylist.value[i];
 
-    // انتظار می‌ره base64Audio و title داشته باشه
     final bytes = base64Decode(song['base64Audio']);
     final tempDir = await getTemporaryDirectory();
     await _disposeTempFile();
@@ -122,7 +120,6 @@ class GlobalAudioPlayer {
     await _playFromCurrentIndex();
   }
 
-  /// Previous: اول callback اگر تنظیم بود؛ در غیر اینصورت fallback
   Future<void> playPrevious() async {
     if (onPreviousPressed != null) {
       await onPreviousPressed!.call();
@@ -136,7 +133,6 @@ class GlobalAudioPlayer {
     await _playFromCurrentIndex();
   }
 
-  /// Play/Pause بدون وابستگی به UI
   Future<void> togglePlayPause() async {
     if (isPlaying.value) {
       await audioPlayer.pause();
@@ -145,7 +141,7 @@ class GlobalAudioPlayer {
       await audioPlayer.resume();
       isPlaying.value = true;
     }
-    onPlayPausePressed?.call(); // اختیاری برای sync UI
+    onPlayPausePressed?.call();
   }
 
   Future<void> seekSeconds(int seconds) async {
@@ -208,7 +204,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     super.initState();
     _currentIndex = widget.initialIndex;
 
-    // انیمیشن‌ها
     _albumArtController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -253,11 +248,9 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       final song = widget.playlist[_currentIndex];
       final bytes = base64Decode(song['base64Audio']);
       final tempDir = await getTemporaryDirectory();
-      // پاکسازی فایل قبلی
       await _globalPlayer._disposeTempFile();
       final file = File('${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.mp3');
       await file.writeAsBytes(bytes);
-      // به GlobalAudioPlayer اطلاع بده کجاست
       _globalPlayer._tempFilePath = file.path;
 
       await _audioPlayer.setSource(DeviceFileSource(file.path));
@@ -318,7 +311,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     _stateSub?.cancel();
     _completeSub?.cancel();
 
-    // وقتی این صفحه میره، callbackها رو پاک می‌کنیم (fallback سراسری کار می‌کند)
     _globalPlayer.onNextPressed = null;
     _globalPlayer.onPreviousPressed = null;
     _globalPlayer.onPlayPausePressed = null;

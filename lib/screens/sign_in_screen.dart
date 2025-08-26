@@ -30,7 +30,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   void _initializeSocket() {
-    socketService = SocketService(host: '10.167.177.165', port: 10384);
+    socketService = SocketService(host: '10.134.120.165', port: 10384);
     _connectSocket();
   }
 
